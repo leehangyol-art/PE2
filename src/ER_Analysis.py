@@ -86,9 +86,13 @@ edge_thresh = max_rad * 0.75
 filtered_df['Region'] = np.where(filtered_df['Radius'] > edge_thresh, 'Edge', 'Center')
 
 # ==========================================================
-# [통일된 디자인] Wafer Map 그리기
+# [통일된 디자인] Wafer Map 그리기 (격자 및 좌표 추가 수정본)
 # ==========================================================
 print("▶ 웨이퍼 및 날짜별 Wafer Map 생성 중...")
+
+# 격자 범위를 결정하기 위해 물리적 반경(`max_rad`)을 기준으로 축 Limits 설정 (대칭)
+map_limit = np.ceil(max_rad) + 0.5
+
 for b in filtered_df['Band'].unique():
     band_limits = {'min': np.floor(filtered_df[filtered_df['Band'] == b]['ER'].min()),
                    'max': np.ceil(filtered_df[filtered_df['Band'] == b]['ER'].max())}
@@ -96,33 +100,66 @@ for b in filtered_df['Band'].unique():
     for (w, date), group in filtered_df[filtered_df['Band'] == b].groupby(['Wafer', 'Date']):
         if group.empty: continue
 
-        plt.figure(figsize=(9, 9))
+        # figsize를 정방형으로 유지
+        plt.figure(figsize=(10, 10))
+        ax = plt.gca()  # 현재 Axes 객체 가져오기
+
+        # 1. 웨이퍼 외곽선 및 Edge 영역 구분선 (zorder=1: 맨 아래)
         theta = np.linspace(0, 2 * np.pi, 100)
-        plt.plot((max_rad + 0.5) * np.cos(theta), (max_rad + 0.5) * np.sin(theta), color='gray', lw=2)
-        plt.plot(edge_thresh * np.cos(theta), edge_thresh * np.sin(theta), color='red', ls='--', lw=2, alpha=0.6)
+        ax.plot((max_rad + 0.5) * np.cos(theta), (max_rad + 0.5) * np.sin(theta), color='#555555', lw=2, zorder=1)
+        ax.plot(edge_thresh * np.cos(theta), edge_thresh * np.sin(theta), color='#FF8888', ls='--', lw=2, alpha=0.7,
+                zorder=1)
 
-        sc = plt.scatter(group['Column'], group['Row'], c=group['ER'], cmap='coolwarm_r',
-                         vmin=band_limits['min'], vmax=band_limits['max'], s=500, edgecolor='black', alpha=0.9,
-                         zorder=5)
+        # 2. 바둑판 격자 및 축 설정
+        ax.set_aspect('equal')  # 정방형 비율 유지
+
+        # 축 범위 설정 (0,0 기준 대칭)
+        ax.set_xlim(-map_limit, map_limit)
+        ax.set_ylim(-map_limit, map_limit)
+
+        # Ticks 설정: 정수 좌표에 눈금을 매김
+        ticks = np.arange(-np.floor(map_limit), np.ceil(map_limit) + 1, 1)
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+
+        # 격자 추가 (zorder=2: 외곽선 위, 데이터 아래)
+        ax.grid(True, which='major', axis='both', color='#DDDDDD', linestyle='--', linewidth=1, zorder=2)
+
+        # 축 라벨 스타일 및 표시 설정
+        ax.tick_params(axis='both', which='major', labelsize=11, labelcolor='#333333')
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontweight('bold')
+
+        # 축 이름 설정
+        ax.set_xlabel("Column (X Coordinate)", fontsize=14, fontweight='bold', labelpad=10)
+        ax.set_ylabel("Row (Y Coordinate)", fontsize=14, fontweight='bold', labelpad=10)
+
+        # 3. 데이터 포인트 플로팅 (zorder=5: 격자 위)
+        # ER 특성에 맞게 cmap='coolwarm_r' 유지
+        sc = ax.scatter(group['Column'], group['Row'], c=group['ER'], cmap='coolwarm_r',
+                        vmin=band_limits['min'], vmax=band_limits['max'], s=500, edgecolor='black', alpha=0.9,
+                        zorder=5)
+
+        # 4. 데이터 값 텍스트 표시 (zorder=6: 데이터 포인트 위)
         for _, row in group.iterrows():
-            plt.text(row['Column'], row['Row'], f"{row['ER']:.1f}", ha='center', va='center', fontsize=10,
-                     color='black', fontweight='bold', zorder=10)
+            ax.text(row['Column'], row['Row'], f"{row['ER']:.1f}", ha='center', va='center', fontsize=9,
+                    color='black', fontweight='bold', zorder=6)
 
-        cb = plt.colorbar(sc, shrink=0.8)
-        cb.set_label('Extinction Ratio [dB]', fontsize=14, fontweight='bold')
-        cb.ax.tick_params(labelsize=12)
+        # 컬러바 설정
+        cb = plt.colorbar(sc, shrink=0.8, pad=0.03)
+        cb.set_label('Extinction Ratio [dB]', fontsize=13, fontweight='bold')
+        cb.ax.tick_params(labelsize=11)
         for l in cb.ax.yaxis.get_ticklabels(): l.set_weight("bold")
 
-        plt.title(f"Wafer Map: {w} / {b} (Flattened ER)\nDate: {date}", fontsize=18, fontweight='bold', pad=15)
-        plt.axis('off')
-        plt.gca().set_aspect('equal')
+        # 제목 설정
+        plt.title(f"Wafer Map: {w} / {b} (Flattened ER)\nDate: {date}", fontsize=17, fontweight='bold', pad=20)
 
         # 경로: WaferMap / 웨이퍼 / 날짜
         w_dir = os.path.join(wafer_map_dir, w, date)
         os.makedirs(w_dir, exist_ok=True)
-        plt.savefig(os.path.join(w_dir, f"Map_{w}_{b}_{date}_ER.png"), bbox_inches='tight')
+        # bbox_inches='tight'로 축 라벨이 그림 밖으로 잘 나가지 않게 보호
+        plt.savefig(os.path.join(w_dir, f"Map_{w}_{b}_{date}_ER.png"), bbox_inches='tight', dpi=100)
         plt.close()
-
 # ==========================================================
 # 3. [통일된 디자인] Box Plot 그리기 (개별 웨이퍼 단위)
 # ==========================================================
