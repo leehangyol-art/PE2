@@ -6,9 +6,9 @@
 ---
 # 📝Contents
 1. Introduction
-2. Project information
-3. Directory Structure
-4. Install and Run
+2. Install and Run
+3. Project information
+4. Directory Structure
 ---
 > **This is an automated system that parses XML-based wafer measurement data and performs precise analysis of IL, ER, VpiL, and Phase Shift to generate visualizations and integrated Excel reports.**
 
@@ -28,7 +28,33 @@ Our goal is to build a system that automatically analyzes optical characteristic
 | Lee HyoSeong  | 0000@hanyang.ac.kr |
 |  Kim HanSeo   | 0000@hanyang.ac.kr |
 ---
-# 2. Project information
+# 2. Install and Run
+
+### Installation
+
+```bash
+pip install numpy matplotlib scipy pandas
+```
+
+```bash
+pip install -r requirements.txt
+```
+
+### How to Run
+
+1. Place the raw XML data folder you want to analyze into the `dat/` directory
+2. Execute the pipeline
+
+```bash
+python run.py
+```
+
+3. Select analysis options
+   - Target **Wafer** and **Die** (row & column)
+   - Figure options : `Show Figure` / `Save Figure` / `Save CSV`
+4. Results are automatically saved in the `res/` directory
+---
+# 3. Project information
 ### 📖 About This Project
 
 Our goal is to build a system that automatically analyzes
@@ -52,7 +78,7 @@ the final results without manual intervention.
 2. Process raw XML data through a series of analysis modules
 3. Export the final results as `.csv` and `.xlsx` reports
 ---
-# 3. ⚙️ Key Features
+# 4. ⚙️ Key Features
 
 
 ### 1) Data Extraction & Visualization Preparation
@@ -87,7 +113,7 @@ the final results without manual intervention.
 - **`combine_plot.py`** — Merges individual analysis graphs into a single summary dashboard image per wafer and measurement date
 - **`export_summary.py`** — Exports final IL / ER / VπL data as `.csv` and `.xlsx` files, with hyperlinks in Excel mapped to merged summary images for intuitive one-click data verification
 ------
-# 4. 📁 Directory Structure
+# 5. 📁 Directory Structure
 
 The project is structured to separate raw inputs, 
 processed outputs, and source logic clearly
@@ -132,32 +158,11 @@ processed outputs, and source logic clearly
             └── 📁 {Date_YYYYMMDD}/     # Per-measurement-date folders 
                 └── 📄 HY202103_{Wafer}_({C},{R})_LION1_DCM_{Band}.png  # Merged summary images
 ```
----
-# 5. Install and Run
 
-### Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-### How to Run
-
-1. Place the raw XML data folder you want to analyze into the `dat/` directory
-2. Execute the pipeline
-
-```bash
-python run.py
-```
-
-3. Select analysis options
-   - Target **Wafer** and **Die** (row & column)
-   - Figure options : `Show Figure` / `Save Figure` / `Save CSV`
-4. Results are automatically saved in the `res/` directory
----
 # 6. Input & Output Examples
 
-여기에 그래프와 csv 사진 첨부
+<img width="942" height="692" alt="image" src="https://github.com/user-attachments/assets/9519cb5c-545f-415a-a882-83a93bc99b20" />
+
 ---
 
 # 7. ⚙️ Data Analysis Pipeline
@@ -167,6 +172,7 @@ sequentially to process the data.
 
 ### 1. Data Extraction & Visualization Preparation
 
+- **`ref_poly.py`**
 - **`data_parser.py`** (Data Parsing)
   - Loads target band (LMZC, LMZO) spectrum data required 
     for analysis from the raw XML data files.
@@ -234,6 +240,9 @@ sequentially to process the data.
 
 <img width="790" height="790" alt="Box_D07_LMZC_20190715_VpiL_0V" src="https://github.com/user-attachments/assets/1481388c-0f16-419b-8881-049a174d9c78" />
 
+
+# Jupyter Notebook
+
 ### 5. Visualization Merging & Report Auto-Generation
 
 - **`combine_plot.py`** (Dashboard Image Merging)
@@ -249,5 +258,3 @@ sequentially to process the data.
     `.csv` and `.xlsx` files. The Excel file includes 
     hyperlinks mapped to merged summary images (PNG), 
     enabling intuitive one-click data verification.
----
-# ⚠️ Precautions
