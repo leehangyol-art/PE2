@@ -10,7 +10,7 @@
 3. Project information
 4. Directory Structure
 ---
-> **This is an automated system that parses XML-based wafer measurement data and performs precise analysis of IL, ER, VpiL, and Phase Shift to generate visualizations and integrated Excel reports.**
+> **This is an automated system that parses XML-based wafer measurement data and performs precise analysis of Key performance metrics of the MZI-Modulator(IL, ER, VpiL, and Phase Shift to generate) visualizations and integrated Excel reports.**
 
 This project is an end-to-end pipeline that automatically analyzes wafer-level test data from optical devices such as Mach-Zehnder Modulators and outputs the results as a dashboard-style report for at-a-glance visualization.
 
