@@ -147,7 +147,7 @@ processed outputs, and source logic clearly
     │   └── 📄 {Wafer_ID}_Process_result.csv 
     │
     ├── 📁 xlsx/                    # Collection of consolidated Excel reports with hyperlinks
-    │   ├── 📄 Analysis.xlsm            
+    │   ├── 📄 Analysis.xlsx            
     │   ├── 📄 Total_Process_result.xlsx 
     │   └── 📄 {Wafer_ID}_Process_result.xlsx 
     │
