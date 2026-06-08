@@ -8,7 +8,10 @@
 1. Introduction
 2. Install and Run
 3. Project information
-4. Directory Structure
+4. Key Features
+5. Directory Structure
+6. Input & Output Examples
+7. Data Analysis Pipeline
 ---
 > **This is an automated system that parses XML-based wafer measurement data and performs precise analysis of Key performance metrics of the MZI-Modulator(IL, ER, VpiL, and Phase Shift to generate) visualizations and integrated Excel reports.**
 
