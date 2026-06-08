@@ -348,7 +348,7 @@ with pd.ExcelWriter(total_xlsx_path, engine='openpyxl') as writer:
 print(f"  - 🌟 전체 통합 XLSX 저장 완료: {total_xlsx_path}")
 
 # ==========================================================
-# 3. 새로운 Analysis.xlsm 및 Analysis.csv 생성 (통합 이미지 직접 링크)
+# 3. 새로운 Analysis.xlsx 및 Analysis.csv 생성 (통합 이미지 직접 링크)
 # ==========================================================
 df_index = df_full[['Wafer', 'Date', 'Band']].drop_duplicates().reset_index(drop=True)
 
