@@ -8,12 +8,9 @@
 1. Introduction
 2. Install and Run
 3. Project information
-4. Key Features
-5. Directory Structure
-6. Input & Output Examples
-7. Data Analysis Pipeline
+4. Directory Structure
 ---
-> **This is an automated system that parses XML-based wafer measurement data and performs precise analysis of Key performance metrics of the MZI-Modulator(IL, ER, VpiL, and Phase Shift to generate) visualizations and integrated Excel reports.**
+> **This is an automated system that parses XML-based wafer measurement data and performs precise analysis of IL, ER, VpiL, and Phase Shift to generate visualizations and integrated Excel reports.**
 
 This project is an end-to-end pipeline that automatically analyzes wafer-level test data from optical devices such as Mach-Zehnder Modulators and outputs the results as a dashboard-style report for at-a-glance visualization.
 
@@ -24,12 +21,12 @@ This project is an end-to-end pipeline that automatically analyzes wafer-level t
 Our goal is to build a system that automatically analyzes optical characteristics using Python and XML data.
 ## 👥 Contributors
 
-|     Name     |         E-mail          | 
-|:------------:|:-----------------------:|
-| Lee Hangyol  |   0000@hanyang.ac.kr    |
-| Jung Jae min | jjmin0118@hanyang.ac.kr |
-| Lee HyoSeong |   0000@hanyang.ac.kr    |
-|  Kim HanSeo  |   0000@hanyang.ac.kr    |
+|     Name      |       E-mail       | 
+|:-------------:|:------------------:|
+|  Lee Hangyol  | 0000@hanyang.ac.kr |
+| Jeong Jae-min | 0000@hanyang.ac.kr |
+| Lee HyoSeong  | 0000@hanyang.ac.kr |
+|  Kim HanSeo   | 0000@hanyang.ac.kr |
 ---
 # 2. Install and Run
 
@@ -150,7 +147,7 @@ processed outputs, and source logic clearly
     │   └── 📄 {Wafer_ID}_Process_result.csv 
     │
     ├── 📁 xlsx/                    # Collection of consolidated Excel reports with hyperlinks
-    │   ├── 📄 Analysis.xlsx            
+    │   ├── 📄 Analysis.xlsm            
     │   ├── 📄 Total_Process_result.xlsx 
     │   └── 📄 {Wafer_ID}_Process_result.xlsx 
     │

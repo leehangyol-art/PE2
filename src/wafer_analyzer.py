@@ -281,6 +281,119 @@ def plot_die_phase(data, wafer, date, band, c, r):
     _show_fig(fig)
 
 
+def plot_die_plot(data, length_map, wafer, date, band, c, r):
+    # [추가] 선택한 다이 1개의 Raw 스펙트럼 스펙트럼 플롯
+    d = get_die(data, wafer, date, band, c, r)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if d is None:
+        ax.text(0.5, 0.5, '유효한 데이터 없음', ha='center', va='center')
+        _show_fig(fig)
+        return
+
+    # bias 데이터 플로팅
+    for b in d['bias_data_list']:
+        ax.plot(b['wl'], b['il'], label=b['label'], linewidth=2)
+
+    # Reference 데이터 강조 플로팅
+    ax.plot(d['ref_data']['wl'], d['ref_data']['il'], label=d['ref_data']['label'],
+            linewidth=2, color='black', alpha=0.8, linestyle='--')
+
+    ax.set_title(f"Wafer: {wafer} / Coord: ({c}, {r}) / Band: {band}", fontsize=12, fontweight='bold', pad=10)
+    ax.set_xlabel("Wavelength (nm)", fontsize=11, fontweight='bold')
+    ax.set_ylabel("Transmission (dB)", fontsize=11, fontweight='bold')
+    ax.set_ylim(-65, 5)
+    ax.legend(loc='best', prop={'size': 9, 'weight': 'bold'})
+    ax.grid(True, linestyle='--', alpha=0.6, linewidth=1)
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.5)
+
+    fig.tight_layout()
+    _show_fig(fig)
+
+
+def plot_die_fitting(data, length_map, wafer, date, band, c, r):
+    # [추가] 선택한 다이 1개의 리플 제거 및 피팅 스펙트럼 (Zoomed)
+    d = get_die(data, wafer, date, band, c, r)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if d is None:
+        ax.text(0.5, 0.5, '유효한 데이터 없음', ha='center', va='center')
+        _show_fig(fig)
+        return
+
+    m = (d['ref_data']['wl'] >= d['wl_min']) & (d['ref_data']['wl'] <= d['wl_max'])
+    v_ref_wl, v_ref_il = d['ref_data']['wl'][m], d['ref_data']['il'][m]
+
+    if len(v_ref_wl) < 31:
+        ax.text(0.5, 0.5, '데이터 부족 (N < 31)', ha='center', va='center')
+        _show_fig(fig)
+        return
+
+    # 평탄화용 다항식 피팅 및 R^2 계산
+    sm_ref = savgol_filter(v_ref_il, 31, 3)
+    poly = np.poly1d(np.polyfit(v_ref_wl, sm_ref, 3))
+    y_fitted = poly(v_ref_wl)
+
+    ss_res = np.sum((sm_ref - y_fitted) ** 2)
+    ss_tot = np.sum((sm_ref - np.mean(sm_ref)) ** 2)
+    r_squared = 1.0 if ss_tot == 0 else 1 - (ss_res / ss_tot)
+
+    # 줌 범위 지정을 위한 Peak 탐색 (-2V 기준 혹은 첫 번째 bias)
+    z_min, z_max = d['wl_min'], d['wl_max']
+    tgt_bias = next((b for b in d['bias_data_list'] if b['bias'] == -2.0),
+                    d['bias_data_list'][0] if d['bias_data_list'] else None)
+
+    if tgt_bias:
+        m_t = (tgt_bias['wl'] >= d['wl_min']) & (tgt_bias['wl'] <= d['wl_max'])
+        w_t, i_t = tgt_bias['wl'][m_t], tgt_bias['il'][m_t]
+
+        if len(w_t) >= 31:
+            flat_t = savgol_filter(i_t, 31, 3) - poly(w_t)
+            peaks, _ = find_peaks(flat_t, prominence=3.0, distance=30)
+
+            if len(peaks) >= 2:
+                centers = (w_t[peaks[:-1]] + w_t[peaks[1:]]) / 2.0
+                band_str = str(d.get('band', '')).upper()
+                target_wl = d.get('target_wl', 1310.0) if 'O' in band_str else d.get('target_wl', 1550.0)
+                idx = np.argmin(np.abs(centers - target_wl))
+
+                if idx + 1 < len(peaks):
+                    z_min, z_max = w_t[peaks[idx]] - 0.5, w_t[peaks[idx + 1]] + 0.5
+
+    # 전압별 평탄화 및 봉우리 기울기 보정 후 플로팅
+    for b in d['bias_data_list']:
+        m_b = (b['wl'] >= d['wl_min']) & (b['wl'] <= d['wl_max'])
+        v_wl, v_il = b['wl'][m_b], b['il'][m_b]
+        if len(v_wl) < 31:
+            continue
+
+        flat_il = savgol_filter(v_il, 31, 3) - poly(v_wl)
+        peaks, _ = find_peaks(flat_il, prominence=3.0, distance=30)
+
+        if len(peaks) >= 2:
+            flat_il -= np.poly1d(np.polyfit(v_wl[peaks], flat_il[peaks], 1))(v_wl)
+
+        ax.plot(v_wl, flat_il, label=b['label'], alpha=0.8, linewidth=2)
+
+    # Reference선 플로팅
+    ax.plot(v_ref_wl, sm_ref - y_fitted, label=f'REF (R^2={r_squared:.4f})',
+            color='black', lw=2, linestyle='--', zorder=10)
+
+    ax.set_title(f"Wafer: {wafer} / Coord: ({c}, {r}) / Band: {band}\nSmoothed, Flattened & Zoomed", fontsize=12,
+                 fontweight='bold', pad=10)
+    ax.set_xlabel('Wavelength (nm)', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Transmission (dB)', fontsize=11, fontweight='bold')
+    ax.axhline(0, color='gray', ls='--', alpha=0.6, linewidth=1.5)
+    ax.set_xlim(z_min, z_max)
+    ax.legend(loc='best', prop={'size': 9, 'weight': 'bold'})
+    ax.grid(True, linestyle='--', alpha=0.6, linewidth=1)
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.5)
+
+    fig.tight_layout()
+    _show_fig(fig)
+
 # metric별 스타일 (원본 분석 스크립트와 동일)
 _MAP_CFG = {
     'vpil': dict(cmap='coolwarm',   cbar='Vpi*L @ 0V [V*cm]', maptag='VpiL',
@@ -323,7 +436,7 @@ def _metric_df(data, length_map, metric):
     return df
 
 
-def plot_wafer_map(data, length_map, wafer, date, band, metric='vpil'):
+def plot_wafer_map(data, length_map, wafer, date, band, metric='vpil', selected_c=None, selected_r=None):
     # res 폴더의 웨이퍼맵과 동일한 스타일로 그린다.
     cfg = _MAP_CFG[metric]
     df = _metric_df(data, length_map, metric)
@@ -334,7 +447,8 @@ def plot_wafer_map(data, length_map, wafer, date, band, metric='vpil'):
         ax.text(0.5, 0.5, '데이터 없음', ha='center', va='center')
         _show_fig(fig)
         return
-    # 색 범위(밴드 전체 기준) + 지도 크기(전체 반경 기준) - 원본과 동일
+
+    # 색 범위(밴드 전체 기준) + 지도 크기(전체 반경 기준)
     bvals = df[df['Band'] == band]['val']
     if metric == 'vpil':
         v_min, v_max = bvals.min() - 0.05, bvals.max() + 0.05
@@ -348,19 +462,31 @@ def plot_wafer_map(data, length_map, wafer, date, band, metric='vpil'):
     ax.plot((max_r + 0.5) * np.cos(th), (max_r + 0.5) * np.sin(th), color='#555555', lw=2, zorder=1)
     ax.plot(edge_limit * np.cos(th), edge_limit * np.sin(th), color='#FF8888', ls='--', lw=2, alpha=0.7, zorder=1)
     ax.set_aspect('equal')
-    ax.set_xlim(-map_limit, map_limit); ax.set_ylim(-map_limit, map_limit)
+    ax.set_xlim(-map_limit, map_limit);
+    ax.set_ylim(-map_limit, map_limit)
     ticks = np.arange(-np.floor(map_limit), np.ceil(map_limit) + 1, 1)
-    ax.set_xticks(ticks); ax.set_yticks(ticks)
+    ax.set_xticks(ticks);
+    ax.set_yticks(ticks)
     ax.grid(True, which='major', color='#DDDDDD', linestyle='--', linewidth=1, zorder=2)
+
     for lb in ax.get_xticklabels() + ax.get_yticklabels():
         lb.set_fontweight('bold')
     ax.set_xlabel('Column (X Coordinate)', fontsize=14, fontweight='bold', labelpad=10)
     ax.set_ylabel('Row (Y Coordinate)', fontsize=14, fontweight='bold', labelpad=10)
+
+    # 전체 다이 마커 그리기
     sc = ax.scatter(grp['Column'], grp['Row'], c=grp['val'], cmap=cfg['cmap'],
                     vmin=v_min, vmax=v_max, s=500, edgecolor='black', alpha=0.9, zorder=5)
+
     for _, row in grp.iterrows():
         ax.text(row['Column'], row['Row'], f"{row['val']:.2f}", ha='center', va='center',
                 fontsize=9, weight='bold', color='black', zorder=6)
+
+    # 🌟 [여기가 핵심 추가 코드!] 선택한 다이가 있다면 그 위에 굵은 핫핑크색 링을 씌웁니다.
+    if selected_c is not None and selected_r is not None:
+        ax.scatter(selected_c, selected_r, s=750, facecolors='none',
+                   edgecolors='#FF007F', linewidths=4, zorder=10, label='Selected Die')
+
     cb = plt.colorbar(sc, ax=ax, shrink=0.8, pad=0.03)
     cb.set_label(cfg['cbar'], fontsize=13, fontweight='bold')
     ax.set_title(f"Wafer Map: {wafer} / {band} ({cfg['maptag']})\nDate: {qdate}",
@@ -368,12 +494,15 @@ def plot_wafer_map(data, length_map, wafer, date, band, metric='vpil'):
     _show_fig(fig)
 
 
-def plot_box(data, length_map, wafer, date, band, metric='vpil'):
+def plot_box(data, length_map, wafer, date, band, metric='vpil', selected_c=None, selected_r=None):
     # res 폴더의 Center vs Edge 박스플롯과 동일한 스타일.
     cfg = _MAP_CFG[metric]
     df = _metric_df(data, length_map, metric)
     qdate = _merge_date(date)
-    fig, ax = plt.subplots(figsize=(8, 8))
+
+    # 범례가 우측으로 빠지므로 가로 비율을 살짝 늘려주면(9, 8) 균형이 맞습니다.
+    fig, ax = plt.subplots(figsize=(9, 8))
+
     grp = df[(df['Wafer'] == wafer) & (df['Band'] == band) & (df['Date'] == qdate)] if not df.empty else df
     if df.empty or grp.empty:
         ax.text(0.5, 0.5, '데이터 없음', ha='center', va='center')
@@ -384,16 +513,25 @@ def plot_box(data, length_map, wafer, date, band, metric='vpil'):
     e_data = grp[grp['Region'] == 'Edge']['val'].values
     pos, box_data, labels, colors = [], [], [], []
     if len(c_data) > 0:
-        pos.append(1); box_data.append(c_data); labels.append(f'Center\nn={len(c_data)}'); colors.append('#3498db')
+        pos.append(1);
+        box_data.append(c_data);
+        labels.append(f'Center\nn={len(c_data)}');
+        colors.append('#3498db')
     if len(e_data) > 0:
-        pos.append(2); box_data.append(e_data); labels.append(f'Edge\nn={len(e_data)}'); colors.append('#e74c3c')
+        pos.append(2);
+        box_data.append(e_data);
+        labels.append(f'Edge\nn={len(e_data)}');
+        colors.append('#e74c3c')
     if not box_data:
-        ax.text(0.5, 0.5, '데이터 없음', ha='center', va='center'); _show_fig(fig); return
+        ax.text(0.5, 0.5, '데이터 없음', ha='center', va='center');
+        _show_fig(fig);
+        return
 
     allv = np.concatenate(box_data)
     y_min = min(allv.min(), tgt) - 0.2
     y_max = max(allv.max(), tgt) + 0.2
     ax.set_ylim(y_min, y_max)
+
     # Good/Poor 영역 (VpiL은 작을수록 좋음, IL/ER은 클수록 좋음)
     if cfg['good_above']:
         ax.axhspan(tgt, y_max, facecolor='#e8f8f5', alpha=0.6, zorder=0, label='Good Region')
@@ -401,23 +539,51 @@ def plot_box(data, length_map, wafer, date, band, metric='vpil'):
     else:
         ax.axhspan(y_min, tgt, facecolor='#e8f8f5', alpha=0.6, zorder=0, label='Good Region')
         ax.axhspan(tgt, y_max, facecolor='#fadbd8', alpha=0.6, zorder=0, label='Poor Region')
+
     box = ax.boxplot(box_data, positions=pos, patch_artist=True, widths=0.5,
                      flierprops=dict(marker='d', markerfacecolor='black', markersize=6, alpha=0.6), zorder=2)
     for p, cl in zip(box['boxes'], colors):
-        p.set_facecolor(cl); p.set_alpha(0.7)
+        p.set_facecolor(cl);
+        p.set_alpha(0.7)
     for p, arr in zip(pos, box_data):
         ax.scatter(np.random.normal(p, 0.05, len(arr)), arr, color='black', alpha=0.5, s=20, zorder=3)
+
     avg = grp['val'].mean()
     ax.axhline(avg, color='blue', ls='--', lw=2.5, label=f'Avg: {avg:.2f} {cfg["unit"]}', zorder=4)
     ax.axhline(tgt, color='red', ls='-', lw=2.5, label=f'Target: {tgt:.2f} {cfg["unit"]}', zorder=4)
+
+    # 🌟 [수정 포인트 1] 가로지르는 긴 선을 없애고 짧은 지역 선과 텍스트 위치를 최적화했습니다.
+    if selected_c is not None and selected_r is not None:
+        target_die = grp[(grp['Column'] == selected_c) & (grp['Row'] == selected_r)]
+        if not target_die.empty:
+            die_val = target_die['val'].values[0]
+            die_region = target_die['Region'].values[0]
+            x_pos = 1 if die_region == 'Center' else 2
+
+            # 전체를 관통하지 않고 해당 박스 기둥 너비만큼만 짧은 가로 점선을 그려줍니다.
+            ax.hlines(die_val, xmin=x_pos - 0.28, xmax=x_pos + 0.28, color='#FF007F', ls='--', lw=2, zorder=5)
+
+            # 왕별 표시
+            ax.scatter(x_pos, die_val, color='#FF007F', marker='*', s=350, edgecolor='black',
+                       linewidths=1.5, zorder=10, label=f'Die ({selected_c}, {selected_r})')
+
+            # 별 바로 오른쪽에 수치 텍스트 배치
+            ax.text(x_pos + 0.15, die_val, f"{die_val:.2f}", color='#FF007F', fontweight='bold', va='center', zorder=11)
+
     ax.set_title(f"{cfg['boxtag']} Analysis : {wafer} ({band})\nDate: {qdate}", fontsize=18, fontweight='bold', pad=15)
-    ax.set_xticks(pos); ax.set_xticklabels(labels, fontsize=14, fontweight='bold')
+    ax.set_xticks(pos);
+    ax.set_xticklabels(labels, fontsize=14, fontweight='bold')
     ax.set_ylabel(cfg['cbar'], fontsize=16, fontweight='bold')
-    ax.legend(loc='upper right', prop={'size': 11, 'weight': 'bold'})
+
+    # 🌟 [수정 포인트 2] 범례를 그래프 우측 바깥(bbox_to_anchor)으로 완전히 쫓아내어 겹침을 방지합니다.
+    ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), prop={'size': 11, 'weight': 'bold'})
+
     ax.grid(True, axis='y', ls=':', alpha=0.4, zorder=1)
     ax.set_xlim(0.5, max(pos) + 0.5)
-    _show_fig(fig)
 
+    # 바깥으로 나간 범례가 잘리지 않도록 레이아웃 여백을 자동 조정합니다.
+    fig.tight_layout()
+    _show_fig(fig)
 
 def interactive(data, length_map=None, metric='vpil'):
     # 드롭다운으로 다이를 골라 그 다이의 그래프를 화면에 띄운다 (노트북 전용).
