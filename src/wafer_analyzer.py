@@ -261,7 +261,7 @@ def plot_die_vpil(data, length_map, wafer, date, band, c, r):
 
 
 def plot_die_phase(data, wafer, date, band, c, r):
-    # 선택한 다이의 위상변화(라디안) + pi 기준선
+    # 선택한 다이의 위상변화(rad) + pi 기준선
     d = get_die(data, wafer, date, band, c, r)
     fig, ax = plt.subplots(figsize=(8, 5))
     res = extract_phase(d) if d else None
