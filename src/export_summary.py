@@ -268,7 +268,7 @@ df_index = df_full[['Wafer', 'Date', 'Band']].drop_duplicates().reset_index(drop
 BASE_ABS_PATH = os.path.abspath("..")  # 스크립트 상위인 PE2 폴더 기준
 
 
-# 1. 개별 다이 이미지 절대 경로 생성
+# 🌟 1. 개별 다이 이미지 절대 경로 생성
 def generate_die_paths(row):
     wafer = str(row['Wafer'])
     date = str(row['Date'])
@@ -276,7 +276,7 @@ def generate_die_paths(row):
     r = int(row['Row'])
     band = str(row['Band'])
 
-    # 상대 경로: ../res/png/{wafer}/{date}/...
+    # 조립된 상대 경로: ../res/png/{wafer}/{date}/...
     rel_path = f"res/png/{wafer}/{date}/HY202103_{wafer}_({c},{r})_LION1_DCM_{band}.png"
     abs_path = os.path.join(BASE_ABS_PATH, rel_path).replace('\\', '/')
 
