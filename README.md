@@ -214,7 +214,7 @@ sequentially to process the data.
   - Tracks how much the wavelength shifts according to the 
     applied bias voltage based on the dip positions in the 
     fitted graph, and calculates the phase shift.
-<img width="989" height="590" alt="D07_C0_R0_LMZC_Phase" src="https://github.com/user-attachments/assets/74cbb1c8-9cdb-4ef1-98b4-fc615ac42cac" />
+<img width="989" height="590" alt="D07_C0_R0_LMZC_Phase" src="https://github.com/user-attachments/assets/718d1b59-97df-4144-933f-b793e9defc17" />
 
 - **`VpiL.py`** (VπL Extraction)
   - Converts the bias-dependent phase shift into half-wave 
